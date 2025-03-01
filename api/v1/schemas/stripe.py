@@ -7,30 +7,30 @@ from datetime import date
 
 class PaymentInfo(BaseModel):
     card_number: str = Field(..., min_length=16, max_length=16)
-    exp_month: int
-    exp_year: int
+    exp_month: int = Field(...,ge=1, le=12)
+    exp_year: int = Field(..., ge=date.today().year)
     cvc: str = Field(..., min_length=3, max_length=4)
 
     @field_validator('card_number')
     @classmethod
     def card_number_validator(cls, v):
-        if not v.isdigit() or len(v) != 16:
+        # Length already enforced above with Field(min_length, max_length)
+        if not v.isdigit():
             raise ValueError('Card number must be 16 digits')
         return v
 
     @field_validator('cvc')
     @classmethod
     def cvc_validator(cls, v):
-        if not v.isdigit() or not (3 <= len(v) <= 4):
+        # Length already enforced above with Field(min_length, max_length)
+        if not v.isdigit():
             raise ValueError('CVC must be 3 or 4 digits')
         return v
 
-    @model_validator()
+    @model_validator(mode="after")
     def card_expiry_validator(self: Self) -> Self:
         today = date.today()
-        expiry_date = date(self.exp_year, self.exp_month, 1)
-
-        if today.replace(day=1) > expiry_date:
+        if (self.exp_year == today.year) and (self.exp_month < today.month): 
             raise ValueError('Card has expired')
         return self
 
